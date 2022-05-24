@@ -148,7 +148,7 @@ export default class TaskAggregator extends Plugin {
 		if (todoLines['complete'].length > 0 || logLines['complete'].length > 0) {
 			const resortedStr:string =
 				todoLines['original'].join('\n') +
-				'# Completed\n' + todoLines['complete'].join('\n') +
+				'# Completed' + todoLines['complete'].join('\n') +
 				logLines['complete'].join('\n') +
 				todoFileTuple[1] +
 				'## Log' + logLines['original'].join('\n');
@@ -156,7 +156,7 @@ export default class TaskAggregator extends Plugin {
 		}
 	}
 
-	// TODO: Move completed to daily
+	// TODO: Complete command
 	// Identify everything between the todo completed and next ---
 	// Append it to the end of the last blank line after # Completed in today's note
 	// Remove it from todo note

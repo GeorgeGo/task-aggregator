@@ -97,7 +97,7 @@ export default class TaskAggregator extends Plugin {
 		return completedExists && todayExists && todayFileExists;
 	}
 
-	generateOgCompleteLines(stringArr: string[]): {'complete':string[], 'original':string[]} {
+	generateOgCompleteLines(stringArr: string[]): object {
 		const originalLines: string[] = [];
 		const completeLines: string[] = [];
 		let completeParent = true;
@@ -135,28 +135,20 @@ export default class TaskAggregator extends Plugin {
 
 		const todoFile: TFile = files.find(f => f.path == this.settings.todoFilePath);
 		const todoFileString: string = await vault.read(todoFile);
-		let todoFileTuple: string[] = todoFileString.split('# Completed');
+		const todoFileTuple: string[] = todoFileString.split('# Completed');
+		todoFileTuple.concat(todoFileTuple.pop().split('# Log'))
 
-		const logSection = todoFileTuple.pop();
-		todoFileTuple = todoFileTuple.concat(logSection.split('## Log'))
+		const lines = this.generateOgCompleteLines(todoFileTuple[0].split('\n'))
 
-		const todoLines = this.generateOgCompleteLines(todoFileTuple[0].split('\n'));
-		console.log(todoFileTuple[2]);
+		console.log(lines[0][lines[0].length-1]);
 
-		const logLines = this.generateOgCompleteLines(todoFileTuple[2].split('\n'));
-
-		if (todoLines['complete'].length > 0 || logLines['complete'].length > 0) {
-			const resortedStr:string =
-				todoLines['original'].join('\n') +
-				'# Completed\n' + todoLines['complete'].join('\n') +
-				logLines['complete'].join('\n') +
-				todoFileTuple[1] +
-				'## Log' + logLines['original'].join('\n');
+		if (lines[0].length > 0) {
+			const resortedStr:string = lines[1].join('\n') + '# Completed\n' + lines[0].join('\n') + todoFileTuple[1];
 			vault.modify(todoFile, resortedStr);
 		}
 	}
 
-	// TODO: Move completed to daily
+	// TODO: Complete command
 	// Identify everything between the todo completed and next ---
 	// Append it to the end of the last blank line after # Completed in today's note
 	// Remove it from todo note

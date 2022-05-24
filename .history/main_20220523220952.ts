@@ -97,35 +97,6 @@ export default class TaskAggregator extends Plugin {
 		return completedExists && todayExists && todayFileExists;
 	}
 
-	generateOgCompleteLines(stringArr: string[]): {'complete':string[], 'original':string[]} {
-		const originalLines: string[] = [];
-		const completeLines: string[] = [];
-		let completeParent = true;
-
-		stringArr.forEach(line => {
-			if (line[0] !== '\t' && line[0] !== ' ') {
-				if (line.substring(0,5) === '- [x]'){
-					completeLines.push(line);
-					completeParent = true;
-				}else{
-					originalLines.push(line);
-					completeParent = false;
-				}
-			}else{
-				if (completeParent) {
-					completeLines[completeLines.length - 1] += '\n'+line;
-				}else{
-					originalLines[originalLines.length - 1] += '\n'+line;
-				}
-			}
-		})
-
-		return {
-			'complete': completeLines,
-			'original': originalLines
-		}
-	}
-
 	async moveTasksToCompleted(): Promise<void> {
 		const { vault } = this.app;
 
@@ -135,31 +106,38 @@ export default class TaskAggregator extends Plugin {
 
 		const todoFile: TFile = files.find(f => f.path == this.settings.todoFilePath);
 		const todoFileString: string = await vault.read(todoFile);
-		let todoFileTuple: string[] = todoFileString.split('# Completed');
+		const todoFileTuple: string[] = todoFileString.split('# Completed');
 
-		const logSection = todoFileTuple.pop();
-		todoFileTuple = todoFileTuple.concat(logSection.split('## Log'))
+		const originalLines: string[] = [];
+		const completeLines: string[] = [];
+		let completeParent = true;
 
-		const todoLines = this.generateOgCompleteLines(todoFileTuple[0].split('\n'));
-		console.log(todoFileTuple[2]);
+		todoFileTuple[0].split('\n').forEach(line => {
+			if (line.substring(0) !== ' ') {
+				if (line.substring(0,5) === '- [x]'){
+					completeLines.push(line);
+					completeParent = true;
+				}else{
+					originalLines.push(line);
+					completeParent = false;
+				}
+			}else{
+				if (completeParent) {
+					completeLines[-1] += '\n'+line;
+				}else{
+					originalLines[-1] += '\n'+line;
+				}
+			}
+		});
 
-		const logLines = this.generateOgCompleteLines(todoFileTuple[2].split('\n'));
+		console.log(completeLines);
 
-		if (todoLines['complete'].length > 0 || logLines['complete'].length > 0) {
-			const resortedStr:string =
-				todoLines['original'].join('\n') +
-				'# Completed\n' + todoLines['complete'].join('\n') +
-				logLines['complete'].join('\n') +
-				todoFileTuple[1] +
-				'## Log' + logLines['original'].join('\n');
-			vault.modify(todoFile, resortedStr);
-		}
+		const resortedStr:string = originalLines.join('\n') + '\n\n# Complete\n' + completeLines.join('\n') + '\n' + todoFileTuple[1];
+
+		vault.modify(todoFile, resortedStr);
 	}
 
-	// TODO: Move completed to daily
-	// Identify everything between the todo completed and next ---
-	// Append it to the end of the last blank line after # Completed in today's note
-	// Remove it from todo note
+	// TODO: Complete command
 	async moveTasksToDaily(): Promise<void> {
 		const { vault } = this.app;
 
@@ -184,7 +162,10 @@ export default class TaskAggregator extends Plugin {
 		)
 
 		const sourceFiles: TFile[] = files.filter(path => path.name.search('copy') !== -1);
-		const targetFiles: TFile[] = files.filter(path => path.name.search('copy') === -1);
+
+		const targetFilePaths: string[] = ["Todo List.md",
+		"Daily/2022-05-23.md"];
+		const targetFiles: TFile[] = targetFilePaths.map(path => files.find(f => f.path == path));
 
 		targetFiles.forEach(async (file, i) => {
 			vault.modify(file, await vault.read(sourceFiles[i]))

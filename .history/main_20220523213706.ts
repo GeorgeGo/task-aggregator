@@ -6,13 +6,11 @@ import { Notice, Plugin, TFile } from 'obsidian';
 interface TaskAggregatorSettings {
 	todoFilePath: string;
 	dailyFileFolder: string;
-	UTCOffset: number;
 }
 
 const DEFAULT_SETTINGS: TaskAggregatorSettings = {
 	todoFilePath: 'Todo List.md',
-	dailyFileFolder: 'Daily/',
-	UTCOffset: 7
+	dailyFileFolder: 'Daily/'
 }
 
 export default class TaskAggregator extends Plugin {
@@ -27,22 +25,22 @@ export default class TaskAggregator extends Plugin {
 			name: 'Move tasks to completed',
 			callback: async () => {
 				if (await this.settingsAvailable()) {
-					// this.resetFiles();
+					this.resetFiles();
 					this.moveTasksToCompleted();
 					new Notice('Tasks Moved to Completed.');
 				}
 			}
 		});
 
-		// this.addCommand({
-		// 	id: 'move-task-to-daily',
-		// 	name: 'Move completed tasks to daily',
-		// 	callback: () => {
-		// 		this.resetFiles();
-		// 		this.moveTasksToDaily();
-		// 		new Notice('Tasks Moved to Daily.');
-		// 	}
-		// })
+		this.addCommand({
+			id: 'move-task-to-daily',
+			name: 'Move completed tasks to daily',
+			callback: () => {
+				this.resetFiles();
+				this.moveTasksToDaily();
+				new Notice('Tasks Moved to Daily.');
+			}
+		})
 
 		this.addCommand({
 			id: 'reset-files',
@@ -77,10 +75,8 @@ export default class TaskAggregator extends Plugin {
 
 		const todoFileString: string = await vault.read(files.find(f => f.path == this.settings.todoFilePath));
 
-		const now: Date = new Date();
-		now.setHours((now.getHours() - this.settings.UTCOffset));
-		const date = now.toISOString().substring(0,10);
-		const todayPath: string = this.settings.dailyFileFolder + date + '.md';
+		const now: string = new Date().toISOString().substring(0,10);
+		const todayPath: string = this.settings.dailyFileFolder + now + '.md';
 		let dailyFileString = '';
 
 		try {
@@ -97,13 +93,24 @@ export default class TaskAggregator extends Plugin {
 		return completedExists && todayExists && todayFileExists;
 	}
 
-	generateOgCompleteLines(stringArr: string[]): {'complete':string[], 'original':string[]} {
+	async moveTasksToCompleted(): Promise<void> {
+		const { vault } = this.app;
+
+		const files: TFile[] = await Promise.resolve(
+			vault.getMarkdownFiles()
+		)
+
+		const todoFileString: string = await vault.read(files.find(f => f.path == this.settings.todoFilePath));
+		const todoFileTuple: string[] = todoFileString.split('# Completed');
+
+		// Regroup line items that are indented under a parent
+
 		const originalLines: string[] = [];
 		const completeLines: string[] = [];
 		let completeParent = true;
 
-		stringArr.forEach(line => {
-			if (line[0] !== '\t' && line[0] !== ' ') {
+		todoFileTuple[0].split('\n').forEach(line => {
+			if (line.substring(0) !== ' ') {
 				if (line.substring(0,5) === '- [x]'){
 					completeLines.push(line);
 					completeParent = true;
@@ -113,53 +120,25 @@ export default class TaskAggregator extends Plugin {
 				}
 			}else{
 				if (completeParent) {
-					completeLines[completeLines.length - 1] += '\n'+line;
+					completeLines.push(line);
 				}else{
-					originalLines[originalLines.length - 1] += '\n'+line;
+					originalLines.push(line);
 				}
 			}
-		})
+		});
 
-		return {
-			'complete': completeLines,
-			'original': originalLines
-		}
+
+
+
+
+
+		const taskIndexArr: number[] = [];
+		todoFileArr.forEach((line, i) => {
+
+		});
 	}
 
-	async moveTasksToCompleted(): Promise<void> {
-		const { vault } = this.app;
-
-		const files: TFile[] = await Promise.resolve(
-			vault.getMarkdownFiles()
-		)
-
-		const todoFile: TFile = files.find(f => f.path == this.settings.todoFilePath);
-		const todoFileString: string = await vault.read(todoFile);
-		let todoFileTuple: string[] = todoFileString.split('# Completed');
-
-		const logSection = todoFileTuple.pop();
-		todoFileTuple = todoFileTuple.concat(logSection.split('## Log'))
-
-		const todoLines = this.generateOgCompleteLines(todoFileTuple[0].split('\n'));
-		console.log(todoFileTuple[2]);
-
-		const logLines = this.generateOgCompleteLines(todoFileTuple[2].split('\n'));
-
-		if (todoLines['complete'].length > 0 || logLines['complete'].length > 0) {
-			const resortedStr:string =
-				todoLines['original'].join('\n') +
-				'# Completed\n' + todoLines['complete'].join('\n') +
-				logLines['complete'].join('\n') +
-				todoFileTuple[1] +
-				'## Log' + logLines['original'].join('\n');
-			vault.modify(todoFile, resortedStr);
-		}
-	}
-
-	// TODO: Move completed to daily
-	// Identify everything between the todo completed and next ---
-	// Append it to the end of the last blank line after # Completed in today's note
-	// Remove it from todo note
+	// TODO: Complete command
 	async moveTasksToDaily(): Promise<void> {
 		const { vault } = this.app;
 
@@ -183,8 +162,13 @@ export default class TaskAggregator extends Plugin {
 			vault.getMarkdownFiles()
 		)
 
-		const sourceFiles: TFile[] = files.filter(path => path.name.search('copy') !== -1);
-		const targetFiles: TFile[] = files.filter(path => path.name.search('copy') === -1);
+		const sourceFilePaths: string[] = ["Todo List_copy.md",
+		"Daily/2022-05-20_copy.md"];
+		const sourceFiles: TFile[] = sourceFilePaths.map(path => files.find(f => f.path == path));
+
+		const targetFilePaths: string[] = ["Todo List.md",
+		"Daily/2022-05-20.md"];
+		const targetFiles: TFile[] = targetFilePaths.map(path => files.find(f => f.path == path));
 
 		targetFiles.forEach(async (file, i) => {
 			vault.modify(file, await vault.read(sourceFiles[i]))

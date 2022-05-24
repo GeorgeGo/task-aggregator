@@ -1,0 +1,10 @@
+{
+	"id": "task-aggregator",
+	"name": "Task Aggregator",
+	"version": "1.0.0",
+	"minAppVersion": "0.12.0",
+	"description": "Takes completed tasks from Todo File and puts them all under the Completed header at the bottom.",
+	"author": "G3",
+	"authorUrl": "",
+	"isDesktopOnly": true
+}
