@@ -156,7 +156,7 @@ export default class TaskAggregator extends Plugin {
 		}
 	}
 
-	// TODO: Move completed to daily
+	// TODO: Complete command
 	// Identify everything between the todo completed and next ---
 	// Append it to the end of the last blank line after # Completed in today's note
 	// Remove it from todo note
