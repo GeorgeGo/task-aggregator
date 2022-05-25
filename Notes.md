@@ -34,6 +34,8 @@
 - functionize completion identification
 - Reassemble pieces
 
+## May 25, 2022
+
+- Added file backup to backup file on run.
+
 ## Issues
-
-

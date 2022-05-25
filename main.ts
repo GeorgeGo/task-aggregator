@@ -27,7 +27,7 @@ export default class TaskAggregator extends Plugin {
 			name: 'Move tasks to completed',
 			callback: async () => {
 				if (await this.settingsAvailable()) {
-					// this.resetFiles();
+					this.backupTodoFile();
 					this.moveTasksToCompleted();
 					new Notice('Tasks Moved to Completed.');
 				}
@@ -44,14 +44,14 @@ export default class TaskAggregator extends Plugin {
 		// 	}
 		// })
 
-		this.addCommand({
-			id: 'reset-files',
-			name: 'Reset Files',
-			callback: () => {
-				this.resetFiles();
-				new Notice('Files Reset');
-			}
-		});
+		// this.addCommand({
+		// 	id: 'reset-files',
+		// 	name: 'Reset Files',
+		// 	callback: () => {
+		// 		this.resetFiles();
+		// 		new Notice('Files Reset');
+		// 	}
+		// });
 	}
 
 	// Read 'Todo List'
@@ -126,12 +126,24 @@ export default class TaskAggregator extends Plugin {
 		}
 	}
 
+	async backupTodoFile(): Promise<void> {
+		const {vault } = this.app;
+
+		const files: TFile[] = await vault.getMarkdownFiles();
+
+		const todoFile: TFile = files.find(f => f.path == this.settings.todoFilePath);
+
+		const backupFile: TFile = files.find(f => f.path == 'Todo List Backup.md');
+
+		console.log('Backup', backupFile);
+
+		await vault.modify(backupFile, await vault.read(todoFile));
+	}
+
 	async moveTasksToCompleted(): Promise<void> {
 		const { vault } = this.app;
 
-		const files: TFile[] = await Promise.resolve(
-			vault.getMarkdownFiles()
-		)
+		const files: TFile[] = await vault.getMarkdownFiles()
 
 		const todoFile: TFile = files.find(f => f.path == this.settings.todoFilePath);
 		const todoFileString: string = await vault.read(todoFile);
@@ -141,7 +153,6 @@ export default class TaskAggregator extends Plugin {
 		todoFileTuple = todoFileTuple.concat(logSection.split('## Log'))
 
 		const todoLines = this.generateOgCompleteLines(todoFileTuple[0].split('\n'));
-		console.log(todoFileTuple[2]);
 
 		const logLines = this.generateOgCompleteLines(todoFileTuple[2].split('\n'));
 
